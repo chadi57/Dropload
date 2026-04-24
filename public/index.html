@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dropload</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0c0c0d; --surface: #141416; --surface2: #1c1c1f;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #f0f0f0; --muted: #888;
+    --accent: #e8ff5a; --accent-dim: rgba(232,255,90,0.12); --accent-dim2: rgba(232,255,90,0.05);
+    --red: #ff5a5a; --green: #5aff8f;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 3rem 1rem 4rem; }
+
+  /* ── Header ── */
+  header { text-align: center; margin-bottom: 2.5rem; }
+  .logo { font-family: var(--mono); font-size: 2rem; font-weight: 500; color: var(--accent); letter-spacing: -0.03em; }
+  .tagline { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; letter-spacing: 0.07em; text-transform: uppercase; }
+
+  /* ── Adblock warning ── */
+  .adblock-warn { width: 100%; max-width: 560px; background: rgba(255,90,90,0.12); border: 1px solid rgba(255,90,90,0.3); border-radius: 12px; padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--red); text-align: center; font-weight: 600; margin-bottom: 1rem; display: none; }
+  .adblock-warn.visible { display: block; }
+
+  /* ── Card ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1.75rem; width: 100%; max-width: 560px; }
+
+  /* ── Platforms ── */
+  .platform-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.25rem; }
+  .platform-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: var(--mono); font-size: 0.75rem; padding: 9px 6px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .platform-btn:hover { border-color: var(--border2); color: var(--text); }
+  .platform-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
+  /* ── Error ── */
+  .error-msg { margin-bottom: 1rem; background: rgba(255,90,90,0.08); border: 1px solid rgba(255,90,90,0.2); border-radius: 10px; padding: 0.7rem 1rem; font-size: 0.82rem; color: var(--red); font-family: var(--mono); display: none; }
+  .error-msg.visible { display: block; }
+
+  /* ── Input row ── */
+  .input-row { display: flex; gap: 10px; margin-bottom: 1.25rem; }
+  .url-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; color: var(--text); font-family: var(--mono); font-size: 0.88rem; outline: none; transition: border-color 0.15s; }
+  .url-input::placeholder { color: var(--muted); }
+  .url-input:focus { border-color: var(--border2); }
+  .fetch-btn { background: var(--accent); border: none; border-radius: 10px; padding: 0.75rem 1.3rem; color: #0c0c0d; font-family: var(--font); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+  .fetch-btn:hover { opacity: 0.85; }
+  .fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Video preview ── */
+  .video-preview { display: none; margin-bottom: 1.25rem; align-items: center; gap: 1rem; }
+  .video-preview.visible { display: flex; }
+  .thumb { width: 76px; height: 52px; border-radius: 8px; object-fit: cover; background: var(--surface2); border: 1px solid var(--border); flex-shrink: 0; }
+  .video-title { font-size: 0.88rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .video-platform { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+
+  /* ── Quality ── */
+  .quality-section { display: none; }
+  .quality-section.visible { display: block; }
+  .section-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.65rem; font-family: var(--mono); }
+  .quality-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .q-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.15s; }
+  .q-item:has(input:checked) { background: var(--accent-dim); border-color: var(--accent); }
+  .q-item input[type="radio"] { display: none; }
+  .q-label { font-family: var(--mono); font-size: 0.85rem; font-weight: 500; }
+  .q-sub { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+  .badge-ads { font-size: 0.65rem; background: var(--accent-dim2); border: 1px solid rgba(232,255,90,0.25); color: var(--accent); padding: 2px 7px; border-radius: 5px; font-family: var(--mono); }
+  .badge-free { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); }
+  .q-item.unavailable { opacity: 0.3; pointer-events: none; }
+
+  /* ── HD locked notice ── */
+  .locked-notice { display: none; margin-top: 1rem; background: var(--accent-dim2); border: 1px solid rgba(232,255,90,0.15); border-radius: 10px; padding: 1rem 1.2rem; align-items: center; justify-content: space-between; gap: 1rem; }
+  .locked-notice.visible { display: flex; }
+  .locked-text { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+  .locked-text strong { color: var(--accent); }
+  .watch-ads-btn { background: var(--accent); border: none; border-radius: 8px; padding: 8px 16px; color: #0c0c0d; font-weight: 700; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+
+  /* ── HD unlocked banner ── */
+  .success-banner { display: none; margin-top: 1rem; background: rgba(90,255,143,0.07); border: 1px solid rgba(90,255,143,0.2); border-radius: 10px; padding: 0.7rem 1rem; font-size: 0.82rem; color: var(--green); text-align: center; font-family: var(--mono); }
+  .success-banner.visible { display: block; }
+
+  /* ── Download progress ── */
+  .dl-progress { display: none; margin-top: 1.25rem; }
+  .dl-progress.visible { display: block; }
+  .dl-track { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-bottom: 0.45rem; }
+  .dl-fill { height: 100%; background: var(--accent); border-radius: 99px; width: 0%; transition: width 0.35s ease; }
+  .dl-label { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+
+  /* ── Download button ── */
+  .dl-btn-wrap { display: none; margin-top: 1.25rem; }
+  .dl-btn-wrap.visible { display: block; }
+  .dl-btn { width: 100%; background: var(--accent); border: none; border-radius: 10px; padding: 0.9rem; color: #0c0c0d; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: opacity 0.15s; }
+  .dl-btn:hover { opacity: 0.85; }
+  .dl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Ad modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 2rem; width: 100%; max-width: 420px; text-align: center; }
+  .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .modal-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.55; }
+
+  /* Ad overall progress */
+  .ad-track { height: 10px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin-bottom: 0.5rem; }
+  .ad-fill { height: 100%; background: var(--accent); border-radius: 99px; width: 0%; transition: width 0.5s ease; }
+  .ad-count-label { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+  /* Dots */
+  .dots-row { display: flex; justify-content: center; gap: 10px; margin-bottom: 1.25rem; }
+  .dot { width: 30px; height: 30px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 0.7rem; color: var(--muted); transition: all 0.2s; }
+  .dot.done { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .dot.active { border-color: var(--accent); color: var(--accent); }
+
+  .focus-warn { font-size: 0.78rem; color: var(--red); min-height: 1.2rem; margin-bottom: 1rem; font-family: var(--mono); font-weight: 600; }
+
+  .ad-launch-btn { width: 100%; background: var(--accent); border: none; border-radius: 10px; padding: 0.85rem; color: #0c0c0d; font-weight: 700; font-size: 0.92rem; cursor: pointer; margin-bottom: 0.75rem; transition: opacity 0.15s; }
+  .ad-launch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ad-finish-btn { width: 100%; background: var(--green); border: none; border-radius: 10px; padding: 0.85rem; color: #0c0c0d; font-weight: 700; font-size: 0.92rem; cursor: pointer; margin-bottom: 0.75rem; display: none; }
+  .ad-cancel-btn { width: 100%; background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; color: var(--muted); font-size: 0.85rem; cursor: pointer; }
+  .ad-cancel-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  footer { margin-top: 3rem; font-size: 0.7rem; color: #3a3a3a; font-family: var(--mono); text-align: center; line-height: 2; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">dropload</div>
+  <div class="tagline">Paste · Pick · Download</div>
+</header>
+
+<div class="adblock-warn" id="adblockWarn">⚠️ Adblock detected — please disable it to unlock HD quality</div>
+
+<div class="card">
+  <div class="platform-row" id="platforms">
+    <button class="platform-btn active" data-p="YouTube">YouTube</button>
+    <button class="platform-btn" data-p="TikTok">TikTok</button>
+    <button class="platform-btn" data-p="Twitter / X">Twitter / X</button>
+    <button class="platform-btn" data-p="Instagram">Instagram</button>
+    <button class="platform-btn" data-p="Twitch">Twitch</button>
+    <button class="platform-btn" data-p="Reddit">Reddit</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="input-row">
+    <input class="url-input" id="urlInput" type="text" placeholder="Paste your link here…" />
+    <button class="fetch-btn" id="fetchBtn" onclick="fetchVideo()">Fetch</button>
+  </div>
+
+  <div class="video-preview" id="videoPreview">
+    <img class="thumb" id="thumbImg" src="" alt="" />
+    <div>
+      <div class="video-title" id="videoTitle"></div>
+      <div class="video-platform" id="videoPlatform"></div>
+    </div>
+  </div>
+
+  <div class="quality-section" id="qualitySection">
+    <div class="section-label">Quality</div>
+    <div class="quality-grid" id="qualityGrid"></div>
+
+    <div class="locked-notice" id="lockedNotice">
+      <div class="locked-text"><strong>HD locked.</strong> Watch 4 short ads (+25% each) to unlock one HD download.</div>
+      <button class="watch-ads-btn" onclick="openAdModal()">Watch ads</button>
+    </div>
+    <div class="success-banner" id="successBanner">✓ HD unlocked — valid 15 min</div>
+  </div>
+
+  <div class="dl-progress" id="dlProgress">
+    <div class="dl-track"><div class="dl-fill" id="dlFill"></div></div>
+    <div class="dl-label" id="dlLabel">Starting…</div>
+  </div>
+
+  <div class="dl-btn-wrap" id="dlWrap">
+    <button class="dl-btn" id="dlBtn" onclick="startDownload()">Download</button>
+  </div>
+</div>
+
+<!-- Ad modal -->
+<div class="modal-overlay" id="adModal">
+  <div class="modal">
+    <div class="modal-title">Unlock HD quality</div>
+    <div class="modal-sub">Each ad = +25%. Stay on the ad page — the timer only counts when you're away from this tab.</div>
+
+    <div class="ad-track"><div class="ad-fill" id="adFill"></div></div>
+    <div class="ad-count-label" id="adCountLabel">0 / 4 ads watched</div>
+
+    <div class="dots-row">
+      <div class="dot active" id="dot1">1</div>
+      <div class="dot" id="dot2">2</div>
+      <div class="dot" id="dot3">3</div>
+      <div class="dot" id="dot4">4</div>
+    </div>
+
+    <div class="focus-warn" id="focusWarn"></div>
+
+    <button class="ad-launch-btn" id="adLaunchBtn" onclick="launchAdStep()">Watch ad (+25%)</button>
+    <button class="ad-finish-btn" id="adFinishBtn" onclick="completeAds()">Unlock HD now ✓</button>
+    <button class="ad-cancel-btn" onclick="cancelAds()">Cancel</button>
+  </div>
+</div>
+
+<!-- Monetag / Adsterra script goes here -->
+<!-- <script src="https://...your-ad-network.../ads.js"></script> -->
+
+<footer>dropload &nbsp;·&nbsp; free forever &nbsp;·&nbsp; no account needed</footer>
+
+<script>
+  const AD_COUNT    = 4;    // 4 pubs × 25% = 100%
+  const AD_WAIT_S = 10; 
+
+  let hdToken     = null;
+  let adProgress  = 0;      // 0..4
+  let isWatching  = false;
+  let watchTimer  = null;
+
+  // ── Adblock detection ───────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    // Simple heuristique : si un élément typique des pubs est bloqué
+    const test = document.createElement('div');
+    test.className = 'adsbox pub_300x250 pub_300x250m';
+    test.style.cssText = 'width:1px;height:1px;position:absolute;left:-9999px';
+    document.body.appendChild(test);
+    setTimeout(() => {
+      if (test.offsetHeight === 0) {
+        document.getElementById('adblockWarn').classList.add('visible');
+      }
+      document.body.removeChild(test);
+    }, 200);
+  });
+
+  // ── Platform selector ────────────────────────────────────────────────────────
+  document.getElementById('platforms').addEventListener('click', e => {
+    const btn = e.target.closest('.platform-btn');
+    if (!btn) return;
+    document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('urlInput').value = '';
+    resetUI();
+  });
+
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fetchVideo();
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+  function clearError() { document.getElementById('errorMsg').classList.remove('visible'); }
+
+  function resetUI() {
+    clearError();
+    ['videoPreview','qualitySection','dlWrap','dlProgress','successBanner','lockedNotice']
+      .forEach(id => document.getElementById(id).classList.remove('visible'));
+    document.getElementById('qualityGrid').innerHTML = '';
+  }
+
+  // ── Fetch video info ─────────────────────────────────────────────────────────
+  async function fetchVideo() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) return;
+    resetUI();
+
+    const btn = document.getElementById('fetchBtn');
+    btn.disabled = true; btn.textContent = 'Fetching…';
+
+    try {
+      const res  = await fetch('/api/fetch-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { showError(data.error || 'Error.'); return; }
+
+      // Preview
+      document.getElementById('thumbImg').src        = data.thumbnail || '';
+      document.getElementById('videoTitle').textContent   = data.title;
+      document.getElementById('videoPlatform').textContent = data.platform;
+      document.getElementById('videoPreview').classList.add('visible');
+
+      // Build quality grid
+      const grid = document.getElementById('qualityGrid');
+      grid.innerHTML = '';
+      for (const q of (data.availableQualities || [])) {
+        const locked = ['1080p','1440p','4K'].includes(q);
+        const label  = q === 'mp3' ? 'MP3 🎵' : q;
+        const div    = document.createElement('label');
+        div.className = 'q-item';
+        div.innerHTML = `
+          <div>
+            <div class="q-label">${label}</div>
+            <div class="q-sub">${locked ? 'ads required' : 'free'}</div>
+          </div>
+          ${locked ? '<span class="badge-ads">ADS</span>' : '<span class="badge-free">FREE</span>'}
+          <input type="radio" name="quality" value="${q}" data-locked="${locked}">
+        `;
+        grid.appendChild(div);
+      }
+
+      // Default: select 720p or mp3
+      const def = grid.querySelector('input[value="720p"]') || grid.querySelector('input[value="mp3"]') || grid.querySelector('input');
+      if (def) def.checked = true;
+
+      // Quality change listener
+      grid.addEventListener('change', onQualityChange);
+
+      document.getElementById('qualitySection').classList.add('visible');
+      document.getElementById('dlWrap').classList.add('visible');
+      updateDownloadLabel();
+
+    } catch { showError('Network error. Is the server running?'); }
+    finally   { btn.disabled = false; btn.textContent = 'Fetch'; }
+  }
+
+  function onQualityChange() {
+    const sel = document.querySelector('input[name="quality"]:checked');
+    if (!sel) return;
+    const locked = sel.dataset.locked === 'true';
+    document.getElementById('lockedNotice').classList.toggle('visible', locked && !hdToken);
+    updateDownloadLabel();
+  }
+
+  function updateDownloadLabel() {
+    const sel = document.querySelector('input[name="quality"]:checked');
+    if (!sel) return;
+    const isAudio = sel.value === 'mp3';
+    document.getElementById('dlBtn').textContent = isAudio ? 'Download MP3' : 'Download MP4';
+  }
+
+  // ── Download with SSE progress ───────────────────────────────────────────────
+  async function startDownload() {
+    const sel = document.querySelector('input[name="quality"]:checked');
+    if (!sel) return;
+    if (sel.dataset.locked === 'true' && !hdToken) { openAdModal(); return; }
+
+    const url     = document.getElementById('urlInput').value.trim();
+    const quality = sel.value;
+    const btn     = document.getElementById('dlBtn');
+    btn.disabled  = true;
+    clearError();
+
+    const progress = document.getElementById('dlProgress');
+    const fill     = document.getElementById('dlFill');
+    const label    = document.getElementById('dlLabel');
+    progress.classList.add('visible');
+    fill.style.width = '0%';
+    label.textContent = 'Starting…';
+
+    const params = new URLSearchParams({ url, quality });
+    if (hdToken) params.set('hdToken', hdToken);
+
+    const es = new EventSource('/api/download?' + params);
+
+    es.onmessage = e => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === 'progress') {
+        fill.style.width  = msg.pct + '%';
+        label.textContent = msg.msg;
+      }
+
+      if (msg.type === 'error') {
+        es.close();
+        progress.classList.remove('visible');
+        btn.disabled = false;
+        showError(msg.msg);
+      }
+
+      if (msg.type === 'done') {
+        es.close();
+        fill.style.width  = '100%';
+        label.textContent = 'Done!';
+
+        const bytes = Uint8Array.from(atob(msg.b64), c => c.charCodeAt(0));
+        const blob  = new Blob([bytes], { type: msg.mime });
+        const a     = document.createElement('a');
+        a.href       = URL.createObjectURL(blob);
+        a.download   = msg.filename;
+        document.body.appendChild(a);
+        a.click(); a.remove();
+
+        setTimeout(() => {
+          progress.classList.remove('visible');
+          btn.disabled = false;
+          updateDownloadLabel();
+          if (sel.dataset.locked === 'true') {
+            hdToken = null;
+            document.getElementById('successBanner').classList.remove('visible');
+          }
+        }, 1500);
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      progress.classList.remove('visible');
+      btn.disabled = false;
+      showError('Connection lost. Try again.');
+    };
+  }
+
+  // ── Ad modal ─────────────────────────────────────────────────────────────────
+  function openAdModal() {
+    adProgress = 0; isWatching = false;
+    updateAdUI();
+    document.getElementById('adModal').classList.add('open');
+  }
+
+  function closeAdModal() {
+    clearInterval(watchTimer);
+    isWatching = false;
+    document.getElementById('adModal').classList.remove('open');
+  }
+
+  function launchAdStep() {
+  if (isWatching) return;
+  isWatching = true;
+
+  const btn = document.getElementById('adLaunchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Watching…';
+
+  window.open('https://omg10.com/4/10917324', '_blank');
+
+  let elapsed = 0;
+  document.getElementById('focusWarn').textContent = '';
+
+  watchTimer = setInterval(() => {
+    // Pause seulement si l'user revient cliquer sur dropload
+    if (document.hasFocus() && document.visibilityState === 'visible') {
+      document.getElementById('focusWarn').textContent = '⚠️ Stay on the ad page!';
+      return;
+    }
+    document.getElementById('focusWarn').textContent = '';
+    elapsed++;
+
+    // Affiche la progression dans le bouton
+    const remaining = AD_WAIT_S - elapsed;
+    if (remaining > 0) {
+      btn.textContent = `Watching… (${remaining}s)`;
+    }
+
+    if (elapsed >= AD_WAIT_S) {
+      clearInterval(watchTimer);
+      isWatching = false;
+      adProgress++;
+      updateAdUI();
+    }
+  }, 1000);
+}
+
+  function updateAdUI() {
+    const pct = (adProgress / AD_COUNT) * 100;
+    document.getElementById('adFill').style.width      = pct + '%';
+    document.getElementById('adCountLabel').textContent = `${adProgress} / ${AD_COUNT} ads watched`;
+
+    // Dots
+    for (let i = 1; i <= AD_COUNT; i++) {
+      const d = document.getElementById('dot' + i);
+      d.className = 'dot' + (i < adProgress ? ' done' : i === adProgress + 1 ? ' active' : '');
+      if (i <= adProgress) { d.classList.add('done'); d.textContent = '✓'; }
+    }
+
+    if (adProgress >= AD_COUNT) {
+      document.getElementById('adLaunchBtn').style.display  = 'none';
+      document.getElementById('adFinishBtn').style.display  = 'block';
+    } else {
+      const btn = document.getElementById('adLaunchBtn');
+      btn.style.display = 'block';
+      btn.disabled      = false;
+      btn.textContent   = adProgress === 0 ? 'Watch ad (+25%)' : `Watch next ad (+25%) — ${adProgress * 25}% done`;
+    }
+  }
+
+  async function completeAds() {
+    try {
+      const res  = await fetch('/api/unlock-hd', { method: 'POST' });
+      const data = await res.json();
+      hdToken = data.token;
+    } catch { hdToken = 'ok'; }
+
+    closeAdModal();
+    document.getElementById('lockedNotice').classList.remove('visible');
+    document.getElementById('successBanner').classList.add('visible');
+    startDownload(); // auto-lance le DL
+  }
+
+  function cancelAds() {
+    clearInterval(watchTimer);
+    adProgress = 0; isWatching = false;
+    updateAdUI();
+    closeAdModal();
+  }
+</script>
+</body>
+</html>
