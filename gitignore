@@ -1,0 +1,17 @@
+# Env
+.env
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Tmp files
+tmp/
+*.mp4
+*.mp3
+*.webm
+*.m4a
+
+# OS
+.DS_Store
+Thumbs.db
