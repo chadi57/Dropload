@@ -86,8 +86,12 @@ function isUrlAllowed(url) {
 
 function sanitizeUrl(url) {
   if (!url || typeof url !== "string") return null;
-  try { new URL(url); } catch { return null; }
-  return url.replace(/[`$\\|;&<>(){}[\]!#'"]/g, "");
+  // Keep only the first URL-like token (users often paste "URL : error msg")
+  let cleaned = url.trim().split(/\s+/)[0] || "";
+  // Strip trailing punctuation that can break video IDs (":", ".", ",", "!" etc.)
+  cleaned = cleaned.replace(/[)\]}>,.?!:;]+$/g, "");
+  try { new URL(cleaned); } catch { return null; }
+  return cleaned.replace(/[`$\\|;&<>(){}[\]!#'"]/g, "");
 }
 
 // ─── POST /api/fetch-info ─────────────────────────────────────────────────────
