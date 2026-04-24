@@ -311,6 +311,8 @@
 const AD_COUNT  = 4;
 const AD_WAIT_S = 30;
 const MAX_HISTORY = 5;
+const MONETAG_ZONE_ID = 233249;
+const MONETAG_FALLBACK_URL = 'https://omg10.com/4/10917324';
 
 // Format → yt-dlp quality mapping
 const FORMAT_QUALITY_MAP = {
@@ -695,8 +697,17 @@ function launchAdStep() {
   isWatching = true;
   const btn = document.getElementById('adLaunchBtn');
   btn.disabled = true; btn.textContent = 'Watching…';
-  // ── Replace with your real Monetag/Adsterra link ──
-  window.open('https://omg10.com/4/10917324', '_blank');
+
+  const showFn = window[`show_${MONETAG_ZONE_ID}`];
+  const adPromise =
+    typeof showFn === 'function'
+      ? showFn({ type: 'pop', requestVar: 'adLaunchBtn' })
+      : Promise.reject(new Error('Monetag SDK not loaded'));
+
+  adPromise.catch(() => {
+    try { window.open(MONETAG_FALLBACK_URL, '_blank', 'noopener,noreferrer'); } catch {}
+  });
+
   let elapsed = 0;
   document.getElementById('focusWarn').textContent = '';
   watchTimer = setInterval(() => {
@@ -753,5 +764,7 @@ function cancelAds() {
   updateAdUI(); closeAdModal();
 }
 </script>
+
+<script src="https://quge5.com/88/tag.min.js" data-zone="233249" data-sdk="show_233249" async data-cfasync="false"></script>
 </body>
 </html>
